@@ -1,0 +1,10 @@
+Terminal command for creating video:
+
+// Make a video from images
+ffmpeg -start_number 1816 -y -f image2 -r 3 -i cinc_%04d.png -vcodec libx264 -pix_fmt yuv420p -r 25 cinc.mp4
+
+// Convert video from mp4 to .avi, preserving quality
+ffmpeg -i cinc.mp4 -acodec copy -vcodec copy cinc.avi
+
+// Concatenate videos together
+ffmpeg -i "concat:vid1/hw3_1.avi|vid2/hw3_2.avi|vid3/hw3_3.avi|vid4/hw3_4.avi" -c copy hw3.avi

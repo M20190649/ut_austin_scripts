@@ -1,0 +1,115 @@
+\documentclass[10pt]{article}
+\usepackage[final]{graphicx}
+\usepackage{subcaption}
+\usepackage[utf8]{inputenc}
+\usepackage{listings}
+\usepackage{color}
+\usepackage{fancyhdr}
+
+% \makeatletter
+% \setlength{\@fptop}{0pt}
+% \makeatother
+
+% Python code formatting
+\definecolor{codegreen}{rgb}{0,0.6,0}
+\definecolor{codegray}{rgb}{0.5,0.5,0.5}
+\definecolor{codepurple}{rgb}{0.58,0,0.82}
+\definecolor{backcolour}{rgb}{0.95,0.95,0.92}
+ 
+\lstdefinestyle{mystyle}{
+    backgroundcolor=\color{backcolour},
+    commentstyle=\color{codegreen},
+    keywordstyle=\color{magenta},
+    numberstyle=\tiny\color{codegray},
+    stringstyle=\color{codepurple},
+    basicstyle=\small,
+    breakatwhitespace=false,
+    breaklines=true,
+    captionpos=t,
+    keepspaces=true,
+    numbers=left,
+    numbersep=5pt,
+    showspaces=false,
+    showstringspaces=false,
+    showtabs=false,
+    tabsize=2
+}
+
+\lstset{style=mystyle}
+
+% Header settings  
+\pagestyle{fancy}
+\fancyhf{}
+\rhead{09/06/2016}
+\chead{Paul Ruess}
+\lhead{CE 385S - Homework 1}
+\rfoot{Page \thepage}
+
+\begin{document}
+
+\section*{\centerline{Homework 1}}
+
+\subsection*{Problem 1} 
+
+\begin{figure}[!htb]
+\minipage{0.32\textwidth}
+  \includegraphics[width=\linewidth]{stats/histogram_sturges.pdf}
+  \caption{Sturges}\label{fig:1a.1}
+\endminipage\hfill
+\minipage{0.32\textwidth}
+  \includegraphics[width=\linewidth]{stats/histogram_5.pdf}
+  \caption{5 bins}\label{fig:1a.2}
+\endminipage\hfill
+\minipage{0.32\textwidth}%
+  \includegraphics[width=\linewidth]{stats/histogram_15.pdf}
+  \caption{15 bins}\label{fig:1a.3}
+\endminipage
+\end{figure}
+
+\begin{figure}[!htb]
+\minipage{0.48\textwidth}
+  \includegraphics[width=\linewidth]{stats/cumul_freq_dist.pdf}
+  \caption{CDF}\label{fig:1b}
+\endminipage\hfill
+\minipage{0.48\textwidth}%
+  \includegraphics[width=\linewidth]{stats/boxplot.pdf}
+  \caption{Boxplot}\label{fig:1d}
+\endminipage
+\end{figure}
+
+\noindent
+The boxplot (figure 5) contains two outliers: 2,278,000 and 2,310,000, both above the 75th-quartile plus the maximum whisker length of $q75+1.5*iqr$. The lower whisker only extends to 706,000 because this is within the maximum whisker length. \\
+
+\noindent
+Here are the descriptive statistics (question 1c): \\
+
+\begingroup
+\obeylines
+\input{stats/stats.txt}
+\endgroup
+
+\clearpage
+
+\subsection*{Problem 2}
+
+\begin{figure}[!htb]
+\minipage{0.32\textwidth}
+  \includegraphics[width=\linewidth]{stats/norm_dist.pdf}
+  \caption{Normal}\label{fig:2a}
+\endminipage\hfill
+\minipage{0.32\textwidth}
+  \includegraphics[width=\linewidth]{stats/lognorm_dist.pdf}
+  \caption{Lognormal}\label{fig:2b}
+\endminipage\hfill
+\minipage{0.32\textwidth}%
+  \includegraphics[width=\linewidth]{stats/gamma_dist.pdf}
+  \caption{Gamma}\label{fig:2c}
+\endminipage
+\end{figure}
+
+\noindent
+Below is the python code used to create the plots. 
+
+\lstinputlisting[language=Python, caption=statswrap.py statistics wrapper]{statswrap.py}
+
+\end{document}

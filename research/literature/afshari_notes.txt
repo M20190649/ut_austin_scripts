@@ -1,0 +1,18 @@
+Find USGS gages with associated NHD_PLUS_V2 COMIDs (>5,000 gages from CUNY database)
+Clean dataset by removing gages that have insufficient or noisy data (4,289 gages)
+Pull USGS gage data: channel geometry (r), bankfull maximum depth (Y*), bankfull width (W*), and discharge (Q)
+Calculate At-a-station Hydraulic Geometry (AHG):
+Calculate mean depth (Ybar) from Y* and r
+Calculate water-surface width (W) from W* and r
+Calculate cross-sectional area (A) from Y*, W*, and r
+Calculate flow velocity (u) from Q and A
+Calculate AGH coefficients: c and f from Ybar and Q; a and b from W and Q; k and m from U and Q
+Checked AGH coefficients mathematically (c*a*k=1 and f+b+m=1)
+Compare b-f-m to previous studies (histograms and tri-axial studies of topographical environment features, such as natural channels or semi-arid, etc.)
+Attempt to correlate b-f-m to river planforms (straight, meandering, braided, etc.) and hydraulic infrastructure (dams, weirs, etc.)
+----------------------------------------------------------------
+--In ArcPy--
+Snap USGS gages to NHD_Plus_V2 network
+Calculate sinuosity metric of river
+Create buffer rings around NHD_Plus_V2 dataset and explore NLCD variation in buffers
+Correlate NLCD to AHG
