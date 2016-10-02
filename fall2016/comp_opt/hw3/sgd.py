@@ -136,6 +136,9 @@ class SGD:
 		pts = scipy.array(self.x_hist[-n:])
 		plt.clf()
 		fig = plt.figure()
+		alpha = 1
+
+		
 		if not axis:
 			ax = plt.gca()
 		else:
@@ -221,4 +224,4 @@ if __name__ == '__main__':
 		sgd.nsteps(1)
 		fname = 'vid5/sgd_q1_{0:03d}'.format(i)
 		# ax = plt.gca()
-		sgd.plot(fname)
+		sgd.plot(fname,alphaMult=0.9)
