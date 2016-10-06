@@ -63,93 +63,116 @@
 
 \section*{\centerline{Homework 3 -- Problem 4}}
 
-The Height Above Nearest Drainage (HAND) methodology has recently been adopted by Xing Zheng and Dr. David Maidment at the University of Texas at Austin to improve flood inundation mapping efforts; this is done by generalizing National Elevation Dataset (NED) grid-cells (10m x 10m) as the height above their nearest drainage location (found by following a cell down the path of steepest descent until intersecting with the bottom of a stream reach). The HAND method is relevant to this project because of the data outputs it provides: stream variables (particularly wetted area, hydraulic radius, and slope), and the resulting rating curves derived from these hydraulic properties, can be used to compare the computed HAND rating curves with the ``correct'' United States Geological Survey (USGS) rating curves. Of note, the current HAND rating curves are determined assuming a manning's $n$ of 0.05 for all stream reaches (see equation 1); this is the motivation for this study -- I would like to programmatically determine what the ``correct'' manning's $n$ should be on a large scale, and perhaps statistically compare these corrected $n$ values to the 0.05 assumption currently used. 
+This project has been improved since the previous deliverable in the following ways: 
 
-\begin{equation}
-Q = \frac{k}{n}AR^\frac{2}{3}S^\frac{1}{2}
-\end{equation}
-where: 
-\begin{description}
-\item[Q] is the discharge (L\textsuperscript{3}/T; ft/s, m/s);
-\item[A] is the cross-sectional area (L\textsuperscript{2}; ft\textsuperscript{2}, m\textsuperscript{2});
-\item[R] is the hydraulic radius (L; ft, m);
-\item[S] is the channel bed slope at constant water depth (L/L, ft/ft, m/m).
-\item[k] is a conversion factor, 1.0 for SI units and 1.49 for English units.
-\end{description}
+\begin{enumerate}
+  \item Using the hydraulic properties computed with the Height Above Nearest Drainage (HAND) method, I have back-calculated the average manning's $n$ for each United States Geological Survey (USGS) rating curve in the Onion Creek, TX watershed. 
+  \item For each USGS gage station, I have found the first instance of flow (ie. flow of 0.01 cfs) and mapped the associated stage-height as the channel bottom-depth. 
+  \item Using the back-calculated manning's $n$, I have tilted the HAND rating curve for an approximate fit to the USGS rating curve with a new bottom-depth. 
+\end{enumerate}
 
-\vspace{1ex}
+Examples of a few rating curves, as compared to their previously "manually" optimized manning's $n$ values, are included in figures 1, 2 and 3. Note that these graphs are not strictly comparable, due to the fact that changes have been made to both the USGS curve (bottom-depth shift) and the HAND curve (different manning's $n$ used). Furthermore, it is important to be aware that an average manning's $n$ (from the various manning's $n$ values calculated from the USGS data at each 1-foot interval) was applied to the HAND rating curve, and this averaging is likely not the best approach for this application; possible improvements could be made by using a root-mean-square-error approach for assessing the optimal manning's $n$ with this back-calculating approach. Finally, it is important to be aware that, though these automatic adjustments seem to fit the USGS rating curves fairly well, this will not be a sustainable model for large-scale rating curve optimization as it relies entirely on USGS rating curves for determining which manning's $n$ to use for the HAND rating curve snapping. 
 
-In short, this project has changed to become more of a statistical curve-fitting of  HAND rating curves to USGS rating curves. The intent is to programmatically snap a HAND rating curve to the USGS rating curve; this involves a statistical optimization of sorts (I'm still figuring this part out) including an adjustment of the HAND rating curve to the USGS stream bottom depth (which itself requires adjustment), and a subsequent fitting of the HAND rating curve to the USGS rating curve by adjusting manning's $n$ (roughness). The first step, then, requires collection of the actual data: USGS rating curves were collected online (ex: \url{http://waterdata.usgs.gov/nwisweb/get_ratings?file_type=exsa&site_no=08158810}, where the last eight digits are the USGS identifier), and HAND rating curves and hydrologic information were received from Xing Zheng for the Onion Creek watershed in Austin, Texas. Onion Creek will be used as an initial test case, with the intent of expanding the final rating curve optimization scheme to all of Texas (and, eventually, all of the United States). \\
+% \begin{equation}
+% Q = \frac{k}{n}AR^\frac{2}{3}S^\frac{1}{2}
+% \end{equation}
+% where: 
+% \begin{description}
+% \item[Q] is the discharge (L\textsuperscript{3}/T; ft/s, m/s);
+% \item[A] is the cross-sectional area (L\textsuperscript{2}; ft\textsuperscript{2}, m\textsuperscript{2});
+% \item[R] is the hydraulic radius (L; ft, m);
+% \item[S] is the channel bed slope at constant water depth (L/L, ft/ft, m/m).
+% \item[k] is a conversion factor, 1.0 for SI units and 1.49 for English units.
+% \end{description}
 
+% \vspace{1ex}
 % \clearpage
-
-After the data was collected, a preliminary assessment was conducted in which the ``correct'' manning's $n$ for each of eight stream reaches within the Onion Creek watershed were manually determined. Figures 1a through 1h (see pages 3 and 4) show both the HAND rating curves (red), the USGS rating curves (blue), and the HAND rating curve after it has been manually fitted to the USGS rating curve (green); the manning's $n$ value displayed in the upper right-hand corner of each image is the roughness that was used for the fit. \\
-
-The first thing that is evident is that the ``correct'' manning's $n$ values are quite high. As seen in the following url: \url{http://www.fsl.orst.edu/geowater/FX3/help/8_Hydraulic_Reference/Mannings_n_Tables.htm}, manning's $n$ is generally between 0.02 and 0.07, with values rarely getting above 0.2. As such, I will need to spend some time reviewing the Python script I am using (Listing 1) to be certain that my mathematical approach and units are correct. Once I am certain that the mathematics is correct, I will proceed to automate the curve fitting. 
 
 \begin{figure}[b!]
 \makebox[\linewidth][c]{
 \begin{subfigure}{0.65\textwidth}
   \centering
   \includegraphics[width=\linewidth]{manualresults/rc_comid_5780099.pdf}
-  \caption{Rating Curve for COMID 5780099}\label{fig:a}
+  \caption{Manually-Adjusted Rating Curve}\label{fig:a}
 \end{subfigure}\hspace*{\fill}
 \begin{subfigure}{0.65\textwidth}
   \centering
-  \includegraphics[width=\linewidth]{manualresults/rc_comid_5781353.pdf} \caption{Rating Curve for COMID 5781353}\label{fig:b}
+  \includegraphics[width=\linewidth]{autoresults/rc_comid_5780099.pdf}
+  \caption{Automatically-Adjusted Rating Curve}\label{fig:b}
 \end{subfigure}\hspace*{\fill}
 }
-
-\smallskip
-\makebox[\linewidth][c]{
-\begin{subfigure}{0.65\textwidth}
-  \centering
-  \includegraphics[width=\linewidth]{manualresults/rc_comid_5781369.pdf}
-  \caption{Rating Curve for COMID 5781369}\label{fig:c}
-\end{subfigure}\hspace*{\fill}
-\begin{subfigure}{0.65\textwidth}
-  \centering
-  \includegraphics[width=\linewidth]{manualresults/rc_comid_5781373.pdf}
-  \caption{Rating Curve for COMID 5781373}\label{fig:d}
-\end{subfigure}\hspace*{\fill}
-}
-
-\caption{Rating Curves for the Onion Creek watershed in Austin, Texas} \label{fig:1}
+\caption{Manual vs. Automatic Adjustments for COMID 5780099 Rating Curve} \label{fig:2}
 \end{figure}
 
+% \begin{figure}[b!]
+% % \ContinuedFloat
+% % \smallskip
+% \makebox[\linewidth][c]{
+% \begin{subfigure}{0.65\textwidth}
+%   \centering
+%   \includegraphics[width=\linewidth]{manualresults/rc_comid_5781369.pdf}
+%   \caption{Manually-Adjusted Rating Curve}\label{fig:a}
+% \end{subfigure}\hspace*{\fill}
+% \begin{subfigure}{0.65\textwidth}
+%   \centering
+%   \includegraphics[width=\linewidth]{autoresults/rc_comid_5781369.pdf}
+%   \caption{Automatically-Adjusted Rating Curve}\label{fig:b}
+% \end{subfigure}\hspace*{\fill}
+% }
+
+% \caption{Manual vs. Automatic Adjustments for COMID 5781369 Rating Curve} \label{fig:3}
+% \end{figure}
+
 \begin{figure}[b!]
-\ContinuedFloat
+% \ContinuedFloat
 \makebox[\linewidth][c]{
-\begin{subfigure}{0.65\textwidth}
-  \centering
-  \includegraphics[width=\linewidth]{manualresults/rc_comid_5781401.pdf}
-  \caption{Rating Curve for COMID 5781401}\label{fig:e}
-\end{subfigure}\hspace*{\fill}
 \begin{subfigure}{0.65\textwidth}
   \centering
   \includegraphics[width=\linewidth]{manualresults/rc_comid_5781407.pdf}
-  \caption{Rating Curve for COMID 5781407}\label{fig:f}
+  \caption{Manually-Adjusted Rating Curve}\label{fig:a}
+\end{subfigure}\hspace*{\fill}
+\begin{subfigure}{0.65\textwidth}
+  \centering
+  \includegraphics[width=\linewidth]{autoresults/rc_comid_5781407.pdf}
+  \caption{Automatically-Adjusted Rating Curve}\label{fig:b}
 \end{subfigure}\hspace*{\fill}
 }
 
-\smallskip
+\caption{Manual vs. Automatic Adjustments for COMID 5781407 Rating Curve} \label{fig:4}
+\end{figure}
+
+\begin{figure}[b!]
+% \ContinuedFloat
+% \smallskip
 \makebox[\linewidth][c]{
 \begin{subfigure}{0.65\textwidth}
   \centering
   \includegraphics[width=\linewidth]{manualresults/rc_comid_5781431.pdf}
-  \caption{Rating Curve for COMID 5781431}\label{fig:g}
+  \caption{Manually-Adjusted Rating Curve}\label{fig:a}
 \end{subfigure}\hspace*{\fill}
 \begin{subfigure}{0.65\textwidth}
   \centering
-  \includegraphics[width=\linewidth]{manualresults/rc_comid_5781731.pdf}
-  \caption{Rating Curve for COMID 5781731}\label{fig:h}
+  \includegraphics[width=\linewidth]{autoresults/rc_comid_5781431.pdf}
+  \caption{Audomatically-Adjusted Rating Curve}\label{fig:b}
 \end{subfigure}\hspace*{\fill}
 }
 
-\caption{Rating Curves for the Onion Creek watershed in Austin, Texas} \label{fig:1}
+\caption{Manual vs. Automatic Adjustments for COMID 5781431 Rating Curve} \label{fig:5}
 \end{figure}
 
 \clearpage
+
+As stated previously, the intent of this research is to programmatically fit a HAND rating curve to its corresponding USGS rating curve. That said, manipulation of manning's $n$ is not strictly acceptable, seeing as it is a physical parameter ideally representative of the stream reach in question (see figure 1 below). Changes to manning's $n$ are effectively a claim that physical streambed material is changing, which is unreasonable. Instead, this project has changed to focus on understanding the statistical differences between "theoretical" hydrologic properties (specifically wetted area, hydraulic radius, and slope) and their "actual" counterparts, which will likely be retrieved from HEC-RAS models with detailed cross-section descriptions.
+
+\begin{figure}[b!]
+\centering
+\includegraphics[keepaspectratio, width=\textwidth]{n_values.pdf}
+\caption{Acceptable Manning's $n$ values, retrieved from: \url{http://www.shippensburgtownship.com/2010-01/media/development/Table\%20B-4.pdf}} \label{fig:1}
+\end{figure}
+
+After the data was collected, a preliminary assessment was conducted in which the ``correct'' manning's $n$ for each of eight stream reaches within the Onion Creek watershed were manually determined. Figures 1a through 1h (see pages 3 and 4) show both the HAND rating curves (red), the USGS rating curves (blue), and the HAND rating curve after it has been manually fitted to the USGS rating curve (green); the manning's $n$ value displayed in the upper right-hand corner of each image is the roughness that was used for the fit. \\
+
+The first thing that is evident is that the ``correct'' manning's $n$ values are quite high. As seen in the following url: \url{http://www.fsl.orst.edu/geowater/FX3/help/8_Hydraulic_Reference/Mannings_n_Tables.htm}, manning's $n$ is generally between 0.02 and 0.07, with values rarely getting above 0.2. As such, I will need to spend some time reviewing the Python script I am using (Listing 1) to be certain that my mathematical approach and units are correct. Once I am certain that the mathematics is correct, I will proceed to automate the curve fitting. 
 
 \noindent
 Regarding the automation of the curve fitting, there are two main steps: 
