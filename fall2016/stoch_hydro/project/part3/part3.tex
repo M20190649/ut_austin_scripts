@@ -71,7 +71,7 @@ This project has been improved since the previous deliverable in the following w
   \item Using the back-calculated manning's $n$, I have tilted the HAND rating curve for an approximate fit to the USGS rating curve with a new bottom-depth. 
 \end{enumerate}
 
-Examples of a few rating curves, as compared to their previously "manually" optimized manning's $n$ values, are included in figures 1, 2 and 3. Note that these graphs are not strictly comparable, due to the fact that changes have been made to both the USGS curve (bottom-depth shift) and the HAND curve (different manning's $n$ used). Furthermore, it is important to be aware that an average manning's $n$ (from the various manning's $n$ values calculated from the USGS data at each 1-foot interval) was applied to the HAND rating curve, and this averaging is likely not the best approach for this application; possible improvements could be made by using a root-mean-square-error approach for assessing the optimal manning's $n$ with this back-calculating approach. Finally, it is important to be aware that, though these automatic adjustments seem to fit the USGS rating curves fairly well, this will not be a sustainable model for large-scale rating curve optimization as it relies entirely on USGS rating curves for determining which manning's $n$ to use for the HAND rating curve snapping. 
+Examples of a few rating curves, as compared to their previously "manually" optimized manning's $n$ values, are included in figures 1, 2 and 3. Note that these graphs are not strictly comparable, due to the fact that changes have been made to both the USGS curve (bottom-depth shift) and the HAND curve (different manning's $n$ used). Furthermore, it is important to be aware that an average manning's $n$ (from the various manning's $n$ values calculated from the USGS data at each 1-foot interval) was applied to the HAND rating curve, and this averaging is likely not the best approach for this application; possible improvements could be made by using a root-mean-square-error (RMSE) approach for assessing the optimal manning's $n$ with this back-calculating approach. Finally, it is important to be aware that, though these automatic adjustments seem to fit the USGS rating curves fairly well, this will not be a sustainable model for large-scale rating curve optimization as it relies entirely on USGS rating curves for determining which manning's $n$ to use for the HAND rating curve snapping. 
 
 % \begin{equation}
 % Q = \frac{k}{n}AR^\frac{2}{3}S^\frac{1}{2}
@@ -88,7 +88,7 @@ Examples of a few rating curves, as compared to their previously "manually" opti
 % \vspace{1ex}
 % \clearpage
 
-\begin{figure}[b!]
+\begin{figure}[h]
 \makebox[\linewidth][c]{
 \begin{subfigure}{0.65\textwidth}
   \centering
@@ -104,26 +104,7 @@ Examples of a few rating curves, as compared to their previously "manually" opti
 \caption{Manual vs. Automatic Adjustments for COMID 5780099 Rating Curve} \label{fig:2}
 \end{figure}
 
-% \begin{figure}[b!]
-% % \ContinuedFloat
-% % \smallskip
-% \makebox[\linewidth][c]{
-% \begin{subfigure}{0.65\textwidth}
-%   \centering
-%   \includegraphics[width=\linewidth]{manualresults/rc_comid_5781369.pdf}
-%   \caption{Manually-Adjusted Rating Curve}\label{fig:a}
-% \end{subfigure}\hspace*{\fill}
-% \begin{subfigure}{0.65\textwidth}
-%   \centering
-%   \includegraphics[width=\linewidth]{autoresults/rc_comid_5781369.pdf}
-%   \caption{Automatically-Adjusted Rating Curve}\label{fig:b}
-% \end{subfigure}\hspace*{\fill}
-% }
-
-% \caption{Manual vs. Automatic Adjustments for COMID 5781369 Rating Curve} \label{fig:3}
-% \end{figure}
-
-\begin{figure}[b!]
+\begin{figure}[h]
 % \ContinuedFloat
 \makebox[\linewidth][c]{
 \begin{subfigure}{0.65\textwidth}
@@ -138,10 +119,10 @@ Examples of a few rating curves, as compared to their previously "manually" opti
 \end{subfigure}\hspace*{\fill}
 }
 
-\caption{Manual vs. Automatic Adjustments for COMID 5781407 Rating Curve} \label{fig:4}
+\caption{Manual vs. Automatic Adjustments for COMID 5781407 Rating Curve} \label{fig:3}
 \end{figure}
 
-\begin{figure}[b!]
+\begin{figure}[h]
 % \ContinuedFloat
 % \smallskip
 \makebox[\linewidth][c]{
@@ -157,36 +138,39 @@ Examples of a few rating curves, as compared to their previously "manually" opti
 \end{subfigure}\hspace*{\fill}
 }
 
-\caption{Manual vs. Automatic Adjustments for COMID 5781431 Rating Curve} \label{fig:5}
+\caption{Manual vs. Automatic Adjustments for COMID 5781431 Rating Curve} \label{fig:4}
 \end{figure}
 
 \clearpage
 
-As stated previously, the intent of this research is to programmatically fit a HAND rating curve to its corresponding USGS rating curve. That said, manipulation of manning's $n$ is not strictly acceptable, seeing as it is a physical parameter ideally representative of the stream reach in question (see figure 1 below). Changes to manning's $n$ are effectively a claim that physical streambed material is changing, which is unreasonable. Instead, this project has changed to focus on understanding the statistical differences between "theoretical" hydrologic properties (specifically wetted area, hydraulic radius, and slope) and their "actual" counterparts, which will likely be retrieved from HEC-RAS models with detailed cross-section descriptions.
+As stated previously, the intent of this research is to programmatically fit a HAND rating curve to its corresponding USGS rating curve. That said, manipulation of manning's $n$ is not strictly acceptable, seeing as it is a physical parameter ideally representative of the stream reach in question (see figure 4 below). Changes to manning's $n$ are effectively a claim that physical streambed material is changing, which is unreasonable. Instead, this project has changed to focus on understanding the statistical differences between "theoretical" hydrologic properties (specifically wetted area ($A_w$), hydraulic radius($H_R$), and slope ($S_0$)) and their "actual" counterparts, which will likely be retrieved from HEC-RAS models with detailed cross-section descriptions. Once these differences are understood, corrections can be approximated for each parameter that can, ideally, be used to improve the fit of each HAND rating curve. 
 
-\begin{figure}[b!]
+\begin{figure}[h]
 \centering
-\includegraphics[keepaspectratio, width=\textwidth]{n_values.pdf}
+\includegraphics[keepaspectratio, width=.8\textwidth]{n_vals.png}
 \caption{Acceptable Manning's $n$ values, retrieved from: \url{http://www.shippensburgtownship.com/2010-01/media/development/Table\%20B-4.pdf}} \label{fig:1}
 \end{figure}
 
-After the data was collected, a preliminary assessment was conducted in which the ``correct'' manning's $n$ for each of eight stream reaches within the Onion Creek watershed were manually determined. Figures 1a through 1h (see pages 3 and 4) show both the HAND rating curves (red), the USGS rating curves (blue), and the HAND rating curve after it has been manually fitted to the USGS rating curve (green); the manning's $n$ value displayed in the upper right-hand corner of each image is the roughness that was used for the fit. \\
+It is my current understanding that the differences between the HAND and USGS rating curves are primarily related to Digital Elevation Model (DEM) imperfections. DEMs are generally constructed with the use of remote sensing technologies, which frequently fail to penetrate through water surfaces (and, Paola, feel free to correct me if I'm wrong; you know a lot more about this than me). This failure to penetrate means that, at the time a land surface is remotely sensed, the lowest elevations for stream reaches will actually represent the stage height at that time, rather than the stream's bottom depth. Because of this discrepancy, and because HAND rasters are created from DEMs, the $A_w$ and and wetted perimeter (which together influence the $H_R$) computed from the HAND rasters may likely be incorrect (see figure 5); these discrepencies may further extend to the $S_0$, introducing another potentially faulty error to the HAND raster creation. 
 
-The first thing that is evident is that the ``correct'' manning's $n$ values are quite high. As seen in the following url: \url{http://www.fsl.orst.edu/geowater/FX3/help/8_Hydraulic_Reference/Mannings_n_Tables.htm}, manning's $n$ is generally between 0.02 and 0.07, with values rarely getting above 0.2. As such, I will need to spend some time reviewing the Python script I am using (Listing 1) to be certain that my mathematical approach and units are correct. Once I am certain that the mathematics is correct, I will proceed to automate the curve fitting. 
+\begin{figure}[t]
+\centering
+\includegraphics[keepaspectratio, width=\textwidth]{sketch.png}
+\caption{Sketch of variable wetted area ($A_w$) and wetted perimeter ($P_w$)} \label{fig:5}
+\end{figure}
 
-\noindent
-Regarding the automation of the curve fitting, there are two main steps: 
+\vspace{1ex}
 
-\begin{enumerate}
-  \item Adjust HAND rating curve to fit USGS rating curve along the y-axis (Height, ft) to correct for the USGS accepted bank bottom. I am still devising the solution to this problem, but -- after taking into account the vertical ``shift'' -- I believe I will need to find the highest depth associated with a discharge of zero (USGS rating curves often have many depths with Q = 0, including depths up to multiple feet high) and then set that height as a ``true'' zero. Once this zero is obtained, I will need to correct the HAND rating curve heights to shift them appropriately. 
-  \vspace{1ex}
-  \item Fit each vertically-adjusted HAND rating curve to the USGS rating curve by taking each HAND height and it's associated hydraulic parameters, and looking up the discharge associated with that height in the USGS rating curve table; with all these data points, manning's $n$ can easily be computed and averaged over all heights for each stream reach. This idea should work fine, but I am skeptical that the results will be beneficial: by relying on the USGS rating curves to compute the HAND rating curves, I can not see a clear path forward for generalizing the HAND rating curve computation for reaches without USGS rating curves. As such, I think a statistical approach would be best for the long-term. I'm not entirely sure how this approach may work, but I would suspect there are ways to statistically fit the HAND rating curves to the USGS rating curves (by minimizing the difference between discharge values at the same height, perhaps using an ANOVA or Kruskal-Wallis test and accepting the fit once the null hypothesis is no longer rejected). I am also anticipating that we will learn ways for statistically correlating datasets, such that I may correlate manning's $n$ with the National Land Cover Dataset I mentioned in the first portion of this assignment. 
-\end{enumerate}
+No work has yet been done to access the impact of these discrepencies, but the intent of this project going forward will be to statistically analyze how different these "theoretical" (from HAND) hydraulic properties may be from their "actual" (HEC-RAS cross-sections) counterparts; note that HEC-RAS cross-section information for the Onion Creek watershed has already been retrieved (from Xing Zheng's Master's thesis work). I'm not sure yet how to approach this, but the first step will be to understand the influence of these parameters. So, for example, I will take one stream reach and gradually increase the bottom-depth shift (effectively making the HAND cross-section's bottom-depth deeper) and re-compute the resulting cross-section's $A_w$, $H_R$, and $S_0$ (this one may be a bit tricky). Once I have computed these characteristics, I will re-compute the manning's $n$ and plot the shifted HAND rating curve, comparing it to the USGS rating curve (using some form of RMSE analysis). Ultimately, I will automate this process and iterate over all possible bottom-depth shifts to arrive at the optimal bottom-depth shift. Once this optimal shift is computed for a single stream reach, I will attempt to apply my methodology to the remaining stream reaches in the Onion Creek watershed. The end goal for this approach would probably be to relate each bottom-depth shift to the average flowrate of each stream reach in some generalizable way, such that the methodology would be extendable to un-gaged stream reaches. 
 
-Both these steps are starting to come together, but this is still a work in progress and as such any advice would be very welcome. The intent at this point is to proceed with steps 1 and 2 until Onion Creek is working appropriately. Once this is done, I will try to expand my code to function on all of the stream reaches in Texas that have USGS gage locations. To do this, I will test over some fraction of the stream reaches (ie. 90\%), use the results to inform some sort of machine-learning algorithm that I hope to implement, and finally verify and/or validate the functionality on the remaining smaller fraction (ie. 10\%) of the stream reaches in Texas. This would make room for a further statistical analysis of the correctness of my algorithm, and once that analysis passes in a statistically-significant manner, I can safely proceed to automate my problem for all of Texas (including all stream reaches that do not contain USGS rating curves for potential validation). \\
+If the bottom-depth shift can not be related to the average flowrate in a statistically significant manner, there may be opportunities for me to collaborate with Shahab Afshari at New York University to relate these bottom-depth shifts to the National Land Cover Dataset (NLCD). This would be a fairly complex procedure, and will likely not be completed in time for this course, but I would like very much to hear any feedback you have on that idea. Shahab is trying to relate his at-a-station hydraulic geometry computations (for approximately 5,000 USGS gage stations) to the NLCD, so we may be able to collaborate on extracting NLCD data within a buffer around each stream reach. 
+
+\vspace{1ex}
+
+See next page for Python script used to create curves. The major changes since the last iteration are the shift to USGS rating curves (by setting the first instance of 0.1 cfs flow as the bottom-depth) and the back-calculating of manning's $n$ values using HAND hydraulic properties ($A_w$, $H_R$, and $S_0$) and the shifted USGS rating curve. 
 
 \clearpage
 
-\lstinputlisting[language=Python, firstline=10, lastline=93, caption={Class CompareRC defined in ratingcurves-onionck-clean.py module to quickly collect, extract, calculate, and display the USGS/HAND rating curves shown in Figure 1.}]{../../../../research/ratingcurves/ratingcurves-onionck.py}
+\lstinputlisting[language=Python, firstline=10, caption={Class CompareRC defined in ratingcurves-onionck.py module to quickly collect, extract, calculate, and display the USGS/HAND rating curves shown in Figures 2 through 4.}]{../../../../research/ratingcurves/ratingcurves-onionck.py}
 
 \end{document}
