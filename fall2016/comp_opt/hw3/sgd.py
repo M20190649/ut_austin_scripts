@@ -111,15 +111,32 @@ class SGD:
 		nreq = wsize*(winterval+2)
 		fold = abstol
 		fnew = -abstol
-		while (scipy.all( scipy.absolute(fold - fnew) >= abstol)) or \
-			(scipy.all( float(fold+1e-11)/(fnew-1e-11) >= 1 + reltol)) or \
-			(scipy.all( float(fold+1e-11)/(fnew-1e-11) >= 1 - reltol)):
+
+		abstest = 0
+		reltestmore = 0
+		reltestless = 0
+
+		def step():
 			self.nsteps( nreq )
 			xold = self.getAvgSoln(wsize)
 			xnew = scipy.average( self.x_hist[ -nreq:(-nreq+wsize) ], axis=0 )
 			fold = self.afunc.feval(xold)
 			fnew = self.afunc.feval(xnew)
-			# print scipy.absolute(fold-fnew), (fold+1e-11)/(fnew-1e-11)
+			return (fold,fnew)
+
+		while abstest != 1:
+			fold,fnew = step()
+			if scipy.all( scipy.absolute(fold - fnew) < abstol):
+				abstest += 1
+		while reltestmore != 1:
+			fold,fnew = step()
+			if scipy.all( float(fold+1e-11)/(fnew-1e-11) < 1 + reltol):
+				reltestmore += 1
+		while reltestless != 1:
+			fold,fnew = step()
+			if scipy.all( float(fold+1e-11)/(fnew-1e-11) < 1 - reltol):
+				reltestless += 1
+
 		return self.stepcount
 
 	def plot(self,fname=None,n=100,alphaMult=1,axis=None):
@@ -130,71 +147,34 @@ class SGD:
 		with the most recent one having alpha=1.
 		axis -- the axis on which to plot the steps."""
 		import matplotlib.pyplot as plt
-		from mpl_toolkits.mplot3d import Axes3D		
-		pts = scipy.array(self.x_hist)
-		n = min(n,pts.shape[0])
-		pts = scipy.array(self.x_hist[-n:])
-		plt.clf()
-		fig = plt.figure()
-		alpha = 1
 
-		
+		n = min(n,len(self.x_hist))
+		points = scipy.array(self.x_hist[-n:])
+
 		if not axis:
 			ax = plt.gca()
 		else:
 			ax = axis
-		x = []
-		y = []
-		z = []
-		a = []
-		pairs = []
-		colors = ['black','g','b','r']
-		if self.x0.ndim == 1:
-			self.x0 = self.x0.reshape(1,self.x0.size)
-		if self.x0.shape[1] == 2:
-			for k in range(self.x0.shape[0]): # num rows
-				for i in range(len(pts)-1):
-					xnew = pts[i][k]
-					if xnew.size == 1: xnew = pts[-i]
-					ynew = pts[i+1][k]
-					if ynew.size == 1: ynew = pts[-(i-1)]
-					pairs.append( zip(xnew,ynew) ) # next x and y after a step
-					plt.cla()
-					colors_array = scipy.arange(self.x0.shape[0])
-					colors_array = scipy.repeat(colors_array,(len(pts)-1))
-					a = 0.0
-					for j in range(len(pairs)): # all x,y pairs
-						if (j*self.x0.shape[0]) > ( len(pairs) - (15*self.x0.shape[0]) ): 
-							a = 1.0
-							a = scipy.absolute( 1 - ( len(pairs) - j ) / float(len(pairs)) )
-							if j == 0: a = 1.0/(i*2+1)
-							if j > 15: a = scipy.absolute( 1 - (len(pairs) - 15 - j) / 15.0 )
-						if self.x0.shape[0] > 1: # vectorized x input
-							a = 1.0 # temporary over-ride
-						ax.plot(*pairs[j][-10:], c=colors[colors_array[j]], alpha=a )
-						# a *= alphaMult
-				ax.scatter(2,1,color='red',marker='o',s=40)
 
-		if self.x0.shape[1] == 3:
+		plt.clf()
+		fig = plt.figure()
+
+		colors = ['black','g','b','r']
+		alpha = 1
+
+		if points.shape[2] == 3:
+			from mpl_toolkits.mplot3d import Axes3D	
 			import mpl_toolkits.mplot3d
 			ax = fig.gca(projection='3d')
-			for i in range(len(pts)-1):
-				xnew = pts[i][0]
-				if xnew.size == 1: xnew = pts[-i]
-				ynew = pts[i+1][0]
-				if ynew.size == 1: ynew = pts[-(i-1)]
-				znew = pts[i+1][0]
-				if znew.size == 1: znew = pts[-(i-1)]
-				pairs.append( zip(xnew,ynew,znew) )
-				plt.cla()
-				for j in (range( len(pairs) )):
-					a = 0.0
-					if j > ( len(pairs) - 15 ): 
-						a = scipy.absolute( 1 - ( len(pairs) - j ) / float(len(pairs)) )
-						if j == 0: a = 1.0/(i*2+1)
-						if j > 15: a = scipy.absolute( 1 - (len(pairs) - 15 - j) / 15.0 )
-					ax.plot(*pairs[j], c='black', alpha=a )
-			ax.scatter(2,1,4,color='red',marker='o',s=40)
+			ax.scatter(*zip(self.afunc.center),color='red',marker='o',s=40)
+
+		if points.shape[2] == 2:
+			plt.scatter(*zip(self.afunc.center),color='red',marker='o',s=40)
+
+		for i in range(points.shape[1]):
+			print points[:,i,:]
+			pts = points[:,i,:]
+			plt.plot(*zip(*pts), color=colors[i%len(colors)], alpha=alpha)	
 
 		if fname == None:
 			plt.show()
@@ -208,20 +188,17 @@ if __name__ == '__main__':
 	
 	alpha = scipy.array([10,200])
 	center = scipy.array([2,1])
-	# x = scipy.array([3,3])
-	x = scipy.random.randint(-3,3,(4,2))
+	x = scipy.matrix([3,3])
+	# x = scipy.matrix(scipy.random.randint(-3,3,(4,2)))
 	sfunc = step_size(0.9,1)
 
 	para = parabola.ParabolaDir(alpha,center)
 
 	sgd = SGD(afunc=para,x0=x,sfunc=sfunc)
 
-	# print sgd.getSoln()
-
-	# sgd.reset()
+	print sgd.getSoln()
 
 	for i in range(200):
 		sgd.nsteps(1)
 		fname = 'vid5/sgd_q1_{0:03d}'.format(i)
-		# ax = plt.gca()
-		sgd.plot(fname,alphaMult=0.9)
+		# sgd.plot(alphaMult=0.9)
