@@ -4,6 +4,7 @@ import matplotlib.pyplot as plt
 import matplotlib.cm as cm
 import math
 import scipy
+import scipy.linalg
 import sgd
 
 class MNISTDataSet: 
@@ -42,7 +43,7 @@ class MNISTDataSet:
 		plt.imshow(img, cmap='Greys')
 		plt.show()
 
-	def getSlice(self, dsname, aslice): 
+	def getSlice(self, dsname, aslice=None): 
 		"""dsname is one of 'train', 'test', or 'validate' and 
 		aslice is a slice. Returns that slice of the datset as
 		a tuple."""
@@ -57,7 +58,7 @@ class MNISTDataSet:
 		else: 
 			images = dstemp[0][ aslice[0]:aslice[1] ]
 			labels = dstemp[1][ aslice[0]:aslice[1] ]
-			return zip(images,labels)
+			return (images,labels)
 
 class MNISTClassifierBase:
 	"""Implements the basic operations of classifiers, but is not a classifier. 
@@ -68,23 +69,37 @@ class MNISTClassifierBase:
 	is classify."""
 
 	def __init__(self,ds=None):
-		"""Read in the dataset, if not passed in."""
+		"""Read in the dataset, if not passed in. If dataset is passed, assumes
+		only one datset (ie. train, test, or validate; not all three)"""
 		if not ds:
-			self.ds = cPickle.load( gzip.open('mnist.pkl.gz') )
-		else: 
-			self.ds = ds
+			ds = cPickle.load( gzip.open('mnist.pkl.gz') )
+			self.ds = ds[0] # Use training dataset
+
+	def bound(self,vec,unitlen=1):
+		norm = scipy.sqrt( (vec*vec).sum(axis=1) )
+		if norm.ndim == 1: 
+			norm = norm.ravel()
+		def normalize(vec):
+			return vec / norm
+		ans = scipy.apply_along_axis(normalize,axis=0,arr=vec)
+		norm = norm.reshape(norm.size,1)
+		outliers = scipy.where(norm > unitlen)
+		ans[outliers] = vec[outliers] / norm[outliers] * unitlen
+		ans[norm.ravel() == 0] = 0
+		return ans
 
 	def errorInd(self,x,data=None):
 		"""Return the number of missclassifications on data, if the parameters
 		are specified by x. The array x gives the parameters for all categories.
 		If data is none, count the number of missclassifications on the
 		validation data set."""
+		pass
 
 	def feval(self,x,avg=True):
 		"""Evaluate the loss function on the parameters x over the entire
 		training data set. If avg is True, average the loss function by the
 		number of examples in the training data set."""
-		ans = funcEval(x,self.ds[0]) # Use training dataset
+		ans = self.funcEval(x,self.ds)
 		if avg:
 			ans = ans / (self.ds[1].shape[0])
 		return ans
@@ -95,14 +110,24 @@ class MNISTClassifierBase:
 
 		ndata -- how many samples to take from the training data set
 		avg -- if True, average the loss function by the number of examples samples"""
-		pass
-
-	def grad(self,x):
-		"""Return the gradient of the loss function at the parameters x, evaluated
-		over the entire training data set."""
-		ans = gradEval(x,self.ds[0]) # Use training dataset
+		u = scipy.random.randint(0,x.shape[0],ndata) # ndata random index values
+		data_vals = scipy.take(self.ds[0],u,axis=0) # take values at random indices
+		data_cats = scipy.take(self.ds[1],u,axis=0) # take categories at random indices
+		data = (data_vals,data_cats) # put data into correct format
+		ans = funcEval(x,data)
+		if avg:
+			ans = ans / (data[1].shape[0]) # average over size of data slice
 		return ans
 
+	def grad(self,x,avg=True,bound=True):
+		"""Return the gradient of the loss function at the parameters x, evaluated
+		over the entire training data set."""
+		ans = gradEval(x,self.ds)
+		if avg:
+			ans = ans / (self.ds[1].shape[0])
+		if bound:
+			ans = self.bound(ans)
+		return ans
 
 	def sgrad(self,x,ndata=100,bound=True,avg=True):
 		"""Return a stochastic gradient at x, evaluated at ndata samples from the
@@ -112,7 +137,16 @@ class MNISTClassifierBase:
 		ndata -- the number of samples from the training set to take
 		bound -- whether to bound the gradient
 		avg -- whether to average the gradient by the number of samples taken"""
-		pass
+		u = scipy.random.randint(0,x.shape[0],ndata) # ndata random index values
+		data_vals = scipy.take(self.ds[0],u,axis=0) # take values at the random indices
+		data_cats = scipy.take(self.ds[1],u,axis=0) # take categories at the random indices
+		data = (data_vals,data_cats) # put data into correct format
+		ans = self.gradEval(x,data)
+		if avg:
+			ans = ans / (data[1].shape[0]) # average over size of data slice
+		if bound:
+			ans = self.bound(ans)
+		return ans
 
 	def classify(self,x,data):
 		"""Use the parameters in x to return classes for the examples in data.
@@ -152,7 +186,7 @@ class MNISTSqLoss(MNISTClassifierBase):
 		return scipy.sum( scipy.square( scipy.absolute( x[ data[1] ] - data[0] ) ) )
 
 	def gradEval(self,x,data):
-		return scipy.sum( 2 * scipy.absolute( x[ data[1] ] - data[0] ) )
+		return ( 2 * scipy.absolute( x[ data[1] ] - data[0] ) )
 
 class MNISTMultiNom(MNISTClassifierBase):
 
@@ -165,9 +199,9 @@ class MNISTMultiNom(MNISTClassifierBase):
 		return (sum1 + sum2)
 
 	def gradEval(self,x,data):
-		pass 
+		pass
 
-# if __name__ == '__main__': 
+if __name__ == '__main__': 
 # 	mnist = MNISTDataSet('train',[0,10])
 # 	# mnist.plotIdx(3)
 # 	# mnist.plotIdx(6)
@@ -175,15 +209,13 @@ class MNISTMultiNom(MNISTClassifierBase):
 
 # 	# mnist.plotDigit(1) # NEEDS WORK. Does not average values
 
-# 	x = scipy.zeros((10,784))
-# 	# x = scipy.matrix(scipy.random.randint(-3,3,(4,2)))
-# 	sfunc = sgd.step_size(0.9,1)
+	classifier = MNISTSqLoss()
+	x = scipy.zeros((10,784)) 
+	sfunc = sgd.step_size(0.9,1)
 
-# 	mnist = MNISTClassifierBase()
+	sgd = sgd.SGD(afunc=classifier,x0=x,sfunc=sfunc)
 
-# 	sgd = sgd.SGD(afunc=para,x0=x,sfunc=sfunc)
-
-# 	print sgd.getSoln()
+	print sgd.getSoln()
 
 # 	for i in range(200):
 # 		sgd.nsteps(1)

@@ -66,7 +66,12 @@ class SGD:
 		x = self.x_hist[-1]
 		grad = self.afunc.sgrad( x, self.ndata )
 		step = self.sfunc( self.stepcount )
-		nx = x - step * grad
+		def stepfunc(x):
+			if x.ndim == 1:
+				x = x.reshape(1,x.size)
+			print x.shape
+			return (x - step * grad)
+		nx = scipy.apply_along_axis( stepfunc, axis=1, arr=x )
 		nxproj = self.proj(nx)
 		self.stepcount += 1
 		self.x_hist.append(nxproj)
@@ -111,7 +116,7 @@ class SGD:
 		reltestmore = 0
 		reltestless = 0
 
-		def step():
+		def takestep():
 			self.nsteps( nreq )
 			xold = self.getAvgSoln(wsize)
 			xnew = scipy.average( self.x_hist[ -nreq:(-nreq+wsize) ], axis=0 )
@@ -120,15 +125,15 @@ class SGD:
 			return (fold,fnew)
 
 		while abstest != 1:
-			fold,fnew = step()
+			fold,fnew = takestep()
 			if scipy.all( scipy.absolute(fold - fnew) < abstol):
 				abstest += 1
 		while reltestmore != 1:
-			fold,fnew = step()
+			fold,fnew = takestep()
 			if scipy.all( float(fold+1e-11)/(fnew-1e-11) < 1 + reltol):
 				reltestmore += 1
 		while reltestless != 1:
-			fold,fnew = step()
+			fold,fnew = takestep()
 			if scipy.all( float(fold+1e-11)/(fnew-1e-11) < 1 - reltol):
 				reltestless += 1
 
