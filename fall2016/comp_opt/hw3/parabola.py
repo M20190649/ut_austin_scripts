@@ -3,6 +3,7 @@ import matplotlib.pyplot as plt
 import scipy
 import random
 import scipy.linalg
+import sgd
 
 def bound(vec,unitlen=1):
 	norm = scipy.sqrt( (vec*vec).sum(axis=1) )
@@ -86,19 +87,20 @@ class ParabolaDir(Parabola):
 		return bound(gradfx)
 
 if __name__ == '__main__':
+	
+	alpha = scipy.array([10,200])
+	center = scipy.array([2,1])
+	x = scipy.matrix([3,3])
+	# x = scipy.matrix(scipy.random.randint(-3,3,(4,2)))
+	sfunc = sgd.step_size(0.9,1)
 
-	alpha = scipy.array([1,2,3,4,5])
-	center = scipy.array([6,7,8,9,10])
+	para = ParabolaDir(alpha,center)
 
-	test = Parabola(alpha,center)
-	test2 = ParabolaDir(alpha,center)
+	sgd = sgd.SGD(afunc=para,x0=x,sfunc=sfunc)
 
+	print sgd.getSoln()
 
-	x = scipy.array([13,2,-2,-3,0])
-
-	# print test.grad(x)
-
-	# print test.sgrad(x)
-	# print test2.sgrad(x)
-	# plt.scatter(x,test.feval(x))
-	# plt.show()
+	for i in range(200):
+		sgd.nsteps(1)
+		fname = 'vid5/sgd_q1_{0:03d}'.format(i)
+		# sgd.plot(alphaMult=0.9)
