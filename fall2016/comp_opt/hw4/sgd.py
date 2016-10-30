@@ -1,6 +1,19 @@
 # from __future__ import division
 import scipy
 
+def bound(vec,unitlen=1):
+	norm = scipy.sqrt( (vec*vec).sum(axis=1) )
+	if norm.ndim == 1: 
+		norm = norm.ravel()
+	def normalize(vec):
+		return vec / norm
+	ans = scipy.apply_along_axis(normalize,axis=0,arr=vec)
+	norm = norm.reshape(norm.size,1)
+	outliers = scipy.where(norm > unitlen)
+	ans[outliers] = vec[outliers] / norm[outliers] * unitlen
+	ans[norm.ravel() == 0] = 0
+	return ans	
+
 def step_size(gamma,start=1):
 	"""Return a function that produces a step size for stochastic
 	gradient descent. The step size for the nth step is of the form:
@@ -66,12 +79,7 @@ class SGD:
 		x = self.x_hist[-1]
 		grad = self.afunc.sgrad( x, self.ndata )
 		step = self.sfunc( self.stepcount )
-		def stepfunc(x):
-			if x.ndim == 1:
-				x = x.reshape(1,x.size)
-			print x.shape
-			return (x - step * grad)
-		nx = scipy.apply_along_axis( stepfunc, axis=1, arr=x )
+		nx = x - step * grad
 		nxproj = self.proj(nx)
 		self.stepcount += 1
 		self.x_hist.append(nxproj)
@@ -89,6 +97,7 @@ class SGD:
 				del self.sx_hist[0]
 			if self.keepobj:
 				del self.obj_hist[0]
+		print self.stepcount
 
 	def nsteps(self,an=1):
 		"""Take an steps of SGD."""
