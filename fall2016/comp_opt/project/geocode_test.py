@@ -1,3 +1,3 @@
 import geocoder
-g = geocoder.google('austin capitol')
+g = geocoder.google('blanton museum of art')
 print g.latlng
