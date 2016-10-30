@@ -1,5 +1,6 @@
 from __future__ import division
 from netCDF4 import Dataset
+import matplotlib.pyplot as plt
 import pandas
 import urllib
 import re
@@ -8,55 +9,22 @@ import scipy
 
 class CompareRC:
 
-	def __init__(self,comid,idlookup,handrc,handrcidx,handnetcdf,handnetcdfidx, en=False):
+	def __init__(self,comid,idlookup,handrc,handrcidx,handnetcdf,handnetcdfidx):
 		self.comid = comid
 		self.idlookup = idlookup
-		self.usgsid = self.idlookup.loc[self.idlookup['FLComID'] == self.comid]['SOURCE_FEA'].values[0]
-		self.usgsrc = 'http://waterdata.usgs.gov/nwisweb/get_ratings?file_type=exsa&site_no={0}'
-		if self.get_usgsrc() == 0: # Fetch self.usgsq and self.usgsh
-			raise IndexError
 		self.handnetcdf = handnetcdf
 		self.handrc = handrc
+		self.usgsid = self.idlookup.loc[self.idlookup['FLComID'] == self.comid]['SOURCE_FEA'].values[0]
+		self.usgsrc = 'http://waterdata.usgs.gov/nwisweb/get_ratings?file_type=exsa&site_no={0}'
 		self.handnetcdfidx = handnetcdfidx.loc[handnetcdfidx['comid'] == self.comid]['index'].values[0]
 		self.handrcidx = handrcidx.loc[handrcidx['comid'] == self.comid]['index'].values[0]
+
+	def get_values(self):
+		if self.get_usgsrc() == 0:
+			return
+		self.get_usgsrc() # Fetch self.usgsq and self.usgsh
 		self.get_handrc() # Fetch self.handq and self.handh
 		self.get_handnetcdf() # Fetch self.handarea, self.handrad, self.handslope, and self.handstage
-		self.get_in_common()
-
-		if en:
-			self.usgsroughness = en
-		else:
-			self.get_usgs_n() # Fetch self.usgsroughness
-		print 'Average roughness: {0:.2f}'.format(self.usgsroughness)
-		self.calc_handrc(self.usgsroughness) # Fetch self.handdisch and self.handstage
-		self.handstageint = self.handstage[self.handidx]
-		self.handdischint = self.handdisch[self.handidx]
-		self.min_leastsq()
-
-	def get_in_common(self):		
-		# Find indices for integer stageheight values in usgsh, and apply to usgsq
-		usgsidx = scipy.where(scipy.equal(scipy.mod(self.usgsh,1),0)) # Find indices of integer values in usgsh
-		usgshint = self.usgsh[usgsidx] # Integers in usgsh
-		usgsqint = self.usgsq[usgsidx] # Integers in usgsq
-
-		# Find indices where usgshint[usgsidx] occur in handstage, and apply to handarea and handrad
-		handidx = scipy.where(scipy.in1d(self.handstage,usgshint))
-		handareaint = self.handarea[handidx]
-		handradint = self.handrad[handidx]
-
-		# Remove usgsqint values for duplicate usgshint heights (keep first instance only)
-		if usgshint.shape != handareaint.shape:
-			for i in range(usgshint.shape[0]):
-				if i == 0: pass
-				elif usgshint[i] == usgshint[i-1]:
-					usgsqint = scipy.delete(usgsqint,i)
-
-		self.usgshint = usgshint
-		self.usgsqint = usgsqint
-		self.handareaint = handareaint
-		self.handradint = handradint
-		self.usgsidx = usgsidx
-		self.handidx = handidx
 
 	def get_usgsrc(self):
 		""" Initializes self.usgsq and self.usgsh """
@@ -74,8 +42,12 @@ class CompareRC:
 				usgsq = scipy.append( usgsq, float(current[2]) )
 				# apply shift in [1] to stage height
 				usgsh = scipy.append( usgsh, (float(current[0]) - float(current[1])) )
-		shift = usgsh[0]
-		self.usgsh = (usgsh - shift) # Normalize usgsh over bottom depth
+		try:
+			self.bottomdepth = usgsh[0] # Set first Q = 1.0 equal to bottom depth
+		except IndexError:
+			print 'USGS Rating Curve does not exist for USGSID {0}'.format(str(self.usgsid))
+			return 0
+		self.usgsh = (usgsh - self.bottomdepth) # Normalize usgsh over bottom depth
 		self.usgsq = usgsq
 
 	def get_handrc(self): 
@@ -124,30 +96,14 @@ class CompareRC:
 	def convert_to_english(self):
 		pass
 
-	def calc_leastsq(self):
-		dif = self.usgsqint - self.handdischint
-		sqdif = dif**2
-		leastsq = scipy.average(sqdif)
-		print 'Least-Squares:', leastsq
-		return leastsq
-
-	def get_usgs_n(self):
-		self.get_in_common()
-
-		# Calculate average manning's n after converting discharge units
-		area = self.handareaint
-		hydrad = self.handradint
-		slope = self.handslope
-		disch = self.usgsqint #*0.0283168 # Convert cfs to cms
-		self.usgsroughness_array = self.mannings_n(area=area,hydrad=hydrad,slope=slope,disch=disch)
-		self.usgsroughness = scipy.average(self.usgsroughness_array)
-
-	def min_leastsq(self):
-		self.calc_leastsq()
-
 	def data_to_csv(self):
 		import itertools
 		import csv
+		if self.get_usgsrc() == 0:
+			return
+		self.get_values() # Fetch usgsq,usgsh,handq,handh,handarea,handrad,handslope, handstage
+		self.get_usgs_n() # Fetch self.usgsroughness
+		self.calc_handrc(self.usgsroughness) # Fetch self.handdisch and self.handstage
 		info = [self.comid,self.usgsid,self.handslope]
 		rows = itertools.izip_longest(info,self.handstage,self.handarea, \
 			self.handrad,self.usgsh,self.usgsq,fillvalue='')
@@ -155,41 +111,56 @@ class CompareRC:
 			csv.writer(f).writerows(rows)
 		f.close()
 
+	def get_usgs_n(self):
+		if self.get_usgsrc() == 0:
+			return
+		self.get_values() # Fetch usgsq,usgsh,handq,handh,handarea,handrad,handslope, handstage
+		
+		# Find indices for integer stageheight values in usgsh, and apply to usgsq
+		usgsidx = scipy.where(scipy.equal(scipy.mod(self.usgsh,1),0)) # Find indices of integer values in usgsh
+		usgsh = self.usgsh[usgsidx]
+		usgsq = self.usgsq[usgsidx]
+
+		# Find indices where usgsh[usgsidx] occur in handstage, and apply to handarea and handrad
+		handidx = scipy.where(scipy.in1d(self.handstage,usgsh))
+		area = self.handarea[handidx]
+		hydrad = self.handrad[handidx]
+
+		# Remove usgsq values for duplicate usgsh heights (keep first instance only)
+		if usgsh.shape != area.shape:
+			for i in range(usgsh.shape[0]):
+				if i == 0: pass
+				elif usgsh[i] == usgsh[i-1]:
+					usgsq = scipy.delete(usgsq,i)
+
+		# Calculate average manning's n after converting discharge units
+		disch = usgsq #*0.0283168 # Convert cfs to cms
+		self.usgsroughness_array = self.mannings_n(area=area,hydrad=hydrad,slope=self.handslope,disch=disch)
+		self.usgsroughness = scipy.average(self.usgsroughness_array)
+		print 'Average roughness: {0:.2f}'.format(self.usgsroughness)
+
 	def plot_rcs(self):
-		import matplotlib.pyplot as plt
-		import matplotlib.ticker as ticker
+		if self.get_usgsrc() == 0:
+			return
+		self.get_values() # Fetch usgsq,usgsh,handq,handh,handarea,handrad,handslope, handstage
+		self.get_usgs_n() # Fetch self.usgsroughness
+		self.calc_handrc(self.usgsroughness) # Fetch self.handdisch
 		fig, ax = plt.subplots()
 		fig.set_size_inches(20,16, forward=True)
-		ax.scatter(self.handq,self.handh,c='none',s=400,marker='^',label='hand')
-		ax.scatter(self.handdisch,self.handstage,c='none',s=400,marker='s',label='hand_fit')
-		ax.scatter(self.usgsq,self.usgsh,c='black',s=400,marker='o',label='usgs')
+		ax.scatter(self.usgsq,self.usgsh,c='b',s=100,label='usgs')
+		ax.scatter(self.handq,self.handh,c='r',s=100,label='hand')
+		ax.scatter(self.handdisch,self.handstage,c='g',s=100,label='hand_calc')
 		plt.gca().set_xlim(left=0)
 		plt.gca().set_ylim(bottom=0)
-		ax.set_xticks(ax.get_xticks()[::2])
-		ax.set_yticks(ax.get_yticks()[::2])
-		# ax.ticklabel_format(style='sci', axis='x', scilimits=(0,0))
-		# tick_spacing = 400000
-		# ax.xaxis.set_major_locator(ticker.MultipleLocator(tick_spacing))
-		ax.set_xticks([400000,800000,1200000])
-		ax.set_yticks([0,20,40,60])
-
-		# title = 'USGS {0}, COMID {1}'.format(str(self.usgsid),str(self.comid))
-		# ax.set_title(fontsize=56)
-		# plt.title(title, y=1.04, fontsize=64)
-		plt.xlabel('Q (cfs)',fontsize=56)
-		plt.ylabel('H (ft)',fontsize=56)
-		# ax.text((self.handq[-1]*0.8),55,"Manning's n: {0:.2f}".format(self.usgsroughness),horizontalalignment='left',
-		# 	fontsize=24,bbox={'facecolor':'green', 'alpha':0.5, 'pad':10})
-		# xformat = ticker.FuncFormatter( lambda x, p: format(int(x), ',') )
-		# ax.xaxis.set_major_formatter(xformat)
-		ax.ticklabel_format(style='sci',axis='x',scilimits=(0,0))
-		plt.rc('font', size=56)
-
-		plt.legend(loc='lower right',fontsize=56)
-		plt.tick_params(axis='both',labelsize=56)
-		# plt.grid()
-		fig.savefig('rc_comid_{0}.png'.format(self.comid))
+		ax.set_title('USGS {0}, COMID {1}'.format(str(self.usgsid),str(self.comid)),fontsize=32)
+		plt.xlabel('Q (cfs)',fontsize=28)
+		plt.ylabel('H (ft)',fontsize=28)
+		ax.text((self.handq[-1]*0.8),55,"Manning's n: {0:.2f}".format(self.usgsroughness),horizontalalignment='left',
+			fontsize=24,bbox={'facecolor':'green', 'alpha':0.5, 'pad':10})
+		plt.legend(loc='upper left',fontsize=24)
+		plt.grid()
 		plt.show()
+		fig.savefig('onionck/results/autoresults/rc_comid_{0}.pdf'.format(self.comid))
 
 if __name__ == '__main__':
 
@@ -199,18 +170,9 @@ if __name__ == '__main__':
 	handrcidx = pandas.read_csv('handrc_idx.csv')
 	handnetcdfidx = pandas.read_csv('handnc_idx.csv')
 	handnetcdf = Dataset('onionck/OnionCreek.nc', 'r')
-	en = None
 
 	for i in range(len(idlookup)):
-		i = 4
 		comid = idlookup['FLComID'][i]
-		try: 
-			rcs = CompareRC(comid,idlookup,handrc,handrcidx,handnetcdf,handnetcdfidx, en=0.35)
-		except IndexError: 
-			usgsid = idlookup['SOURCE_FEA'][i]
-			print 'USGS Rating Curve does not exist for USGSID {0}'.format(str(usgsid))
-			continue
-		# rcs.calc_leastsq()
+		rcs = CompareRC(comid,idlookup,handrc,handrcidx,handnetcdf,handnetcdfidx)
 		rcs.plot_rcs()
-
 		# rcs.data_to_csv()
