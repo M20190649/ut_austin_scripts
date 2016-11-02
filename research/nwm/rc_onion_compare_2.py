@@ -79,18 +79,27 @@ class RCData:
 		for i, rs in enumerate( stations ):
 			a = self.xs[self.xs['RiverStation'] == rs]['Stage_Height_ft_'].values
 			s = [item for item, count in Counter(a).iteritems() if count > 1]
-			if s: continue
-			current = self.xs[ self.xs['RiverStation'] == rs ]
-			prof = current['ProfileM'].unique()[0] # location of xs relative to river reach
-			disch = map(float,current['Discharge_cfs_'].values) # xs disch vals
-			stage = map(float,current['Stage_Height_ft_'].values) # xs stage vals
+			xsids = scipy.array([])
+			if s: xsids = self.xs[self.xs['RiverStation'] == rs]['XSID'].unique()
+			if len(xsids) > 0:
+				continue
+				# for xsid in xsids:
+				# 	current = self.xs[ self.xs['XSID'] == xsid ]
+				# 	prof = current['ProfileM'].unique()[0] # location of xs relative to river reach
+				# 	disch = map(float,current['Discharge_cfs_'].values) # xs disch vals
+				# 	stage = map(float,current['Stage_Height_ft_'].values) # xs stage vals
+			else: 
+				current = self.xs[ self.xs['RiverStation'] == rs ]
+				prof = current['ProfileM'].unique()[0] # location of xs relative to river reach
+				disch = map(float,current['Discharge_cfs_'].values) # xs disch vals
+				stage = map(float,current['Stage_Height_ft_'].values) # xs stage vals
 
 			# Find max q value for querying interpolations
 			# Find max disch value for plotting x_axis
-			max_disch = int( scipy.amax(disch) )
-			if self.max_q_query == 0:
+			max_disch = int( scipy.amax(disch) ) 
+			if i == 0:
 				self.max_q_query = max_disch
-				self.max_disch = max_disch	
+				self.max_disch = max_disch
 			elif max_disch < self.max_q_query: 
 				self.max_q_query = max_disch
 			elif max_disch > self.max_disch: 
@@ -117,6 +126,8 @@ class RCDist(RCData):
 		other_stages = []
 		for i in self.xscurves:
 			disch, stage = zip(*i[1])
+			print q
+			print disch,stage
 			interp_other = scipy.interpolate.interp1d(disch,stage,kind='linear') # kind='cubic'
 			other_stages.append( interp_other(q) )		
 		self.interp_hand = scipy.interpolate.interp1d(self.handq,self.handh,kind='linear') # kind='cubic'
@@ -129,6 +140,7 @@ class RCDist(RCData):
 		evenly spaced intervals. 
 		'alpha' - statistical alpha value
 		'div' - number of intervals"""
+		print self.max_q_query
 		step = self.max_q_query/div
 		ci_qvals = scipy.arange( 0 , (self.max_q_query+step), step )
 
