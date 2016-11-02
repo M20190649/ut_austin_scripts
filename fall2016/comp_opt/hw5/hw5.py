@@ -26,7 +26,6 @@ class roadNetwork:
 		self.addresses = pandas.read_csv(address_data)
 		self.numstreets = len(self.streets)
 
-
 	def create_network(self):
 
 		roadnw = networkx.DiGraph()
@@ -34,10 +33,9 @@ class roadNetwork:
 			start = self.streets['start_nodes'][i]
 			end = self.streets['end_nodes'][i]
 			roadnw.add_edge( start, end )
-		print roadnw.edges()
 
 
-
+		# print roadnw.edges()
 
 	def get_closest_node(self,llpair):
 		"""Determine closest network node to supplied latlon pair"""
