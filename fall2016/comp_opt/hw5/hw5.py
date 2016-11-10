@@ -188,15 +188,14 @@ class roadNetwork:
 			logging.warning('Check solver optimality?')
 
 		# Collect results for mapping
-		ans = [start]
-		c = start
-
+		c = start # current node
+		path = [c]
 		while c != end: # while current is not the last node
 			succs = self.graph.successors(c)
-			nxt = [s for s in succs if self.m.Y[(c,s)] == 1] # get list of successors
-			ans.append(nxt[0]) # take first successor
-			c = nxt[0]
-		return ans # list of str(nodes) in shortest path 
+			nxt = [s for s in succs if self.m.Y[(c,s)] == 1][0] # get successor
+			c = nxt # c is next node
+			path.append(c) # append next node in path to path list
+		return path # list of str(nodes) in shortest path 
 
 		self.edge_data.reset_index() # reset to avoid possible conflicts
 
@@ -204,55 +203,61 @@ class roadNetwork:
 		edges = [[[float(e) for e in val.split()] for val in route]] # edges as list of lists
 		self.map.drawLines(lines=edges,color=c,linewidth=lw)
 
+	def draw_shortest_path(self,curloc='Engineering Teaching Center',
+		dest=False,zoom=False,networkx=True,pyomo=True,file=False):
+		
+		# Clear existing maps
+		self.map.clear()
+
+		# Solve model and plot shortest paths
+		if dest:
+			start = self.get_closest_node(curloc)
+			end = self.get_closest_node(dest)
+			if networkx:
+				nxpath = self.get_shortestpath_nx(start,end) # from networkx
+				self.draw_route(nxpath,c='green',lw=6) # green
+			if pyomo:
+				pyomopath = self.get_shortestpath_pyomo(start,end) # from pyomo
+				self.draw_route(pyomopath,c='orange',lw=3) # orange
+		self.draw_edges()
+		self.draw_nodes(currentloc=curloc)
+
+		# Set zoom extent
+		if not zoom:
+			self.map.setZoom(-97.8526, 30.2147, -97.6264, 30.4323)
+		else: 
+			a,b,c,d = zoom
+			self.map.setZoom(a,b,c,d)
+
+		# Save to file or plot if file=False
+		if file:
+			plt.savefig(file)
+		else:
+			plt.show()	
+
 if __name__ == '__main__':
+
 	street_data = 'hw05_files/austin.csv'
 	address_data = 'hw05_files/addresses.csv'
 	nw = roadNetwork(street_data,address_data)
 
-	currentloc = 'Engineering Teaching Center'
-	start = nw.get_closest_node(currentloc)
-
 	# Draw map
-	nw.draw_edges()
-	nw.draw_nodes(currentloc=currentloc)
-	nw.map.setZoom(-97.8526, 30.2147, -97.6264, 30.4323)
-	plt.show()
-	# plt.savefig('network.png')
+	nw.draw_shortest_path()
 
-	# Get shortest paths to Hula Hut
-	end = nw.get_closest_node('Hula Hut')
-	nxpath = nw.get_shortestpath_nx(start,end) # from networkx
-	pyomopath = nw.get_shortestpath_pyomo(start,end) # from pyomo
 	# Draw shortest paths to Hula Hut
-	nw.map.clear()
-	nw.draw_route(nxpath,c='green',lw=6) # green
-	nw.draw_route(pyomopath,c='orange',lw=3) # orange
-	nw.draw_edges()
-	nw.draw_nodes(currentloc)
-	nw.map.setZoom(-97.796, 30.278, -97.725, 30.314)
-	plt.show()
-	# plt.savefig('hulahut.png')
+	nw.draw_shortest_path(curloc='Engineering Teaching Center',
+		dest='Hula Hut',
+		zoom=(-97.796, 30.278, -97.725, 30.314))
+		# file='hulahut.png')
 
-	# Get shortest path to Rudys Country Store and Bar-B-Q
-	end = nw.get_closest_node('Rudys Country Store and Bar-B-Q')
-	nxpath = nw.get_shortestpath_nx(start,end) # from networkx
-	pyomopath = nw.get_shortestpath_pyomo(start,end) # from pyomo
-	# Draw shortest paths to Rudys Country Store and Bar-B-Q
-	nw.map.clear()
-	nw.draw_route(nxpath,c='green',lw=6) # green
-	nw.draw_route(pyomopath,c='orange',lw=3) # orange
-	nw.draw_edges()
-	nw.draw_nodes(currentloc)
-	nw.map.setZoom(-97.8526, 30.2147, -97.6264, 30.4323)
-	plt.show()
-	# plt.savefig('rudys.png')
+	# Get shortest path to Rudys Country Store and Bar-B-Q and show zoomed-in
+	nw.draw_shortest_path(curloc='Engineering Teaching Center',
+		dest='Rudys Country Store and Bar-B-Q',
+		zoom=(-97.8526, 30.2147, -97.6264, 30.4323))
+		# file='rudys.png')
 
 	# Zoom in to Rudy's U-Turn
-	nw.map.clear()
-	nw.draw_route(nxpath,c='green',lw=6) # green
-	nw.draw_route(pyomopath,c='orange',lw=3) # orange
-	nw.draw_edges()
-	nw.draw_nodes(currentloc)
-	nw.map.setZoom(-97.7654, 30.375, -97.7241, 30.4225)
-	plt.show()
-	# plt.savefig('rudyszoom.png')
+	nw.draw_shortest_path(curloc='Engineering Teaching Center',
+		dest='Rudys Country Store and Bar-B-Q',
+		zoom=(-97.7654, 30.375, -97.7241, 30.4225))
+		# file='rusdys_zoom.png')
