@@ -100,7 +100,7 @@ class CompareRC:
 			self.handrad = handrad[self.handnetcdfidx]*3.28084 # Convert m to ft
 			self.handslope = handslope[self.handnetcdfidx]
 		handstagenew = scipy.array([])
-		for i in handstage:
+		for i in handstage: # THIS DOESN'T MAKE SENSE
 			handstagenew = scipy.append(handstagenew, handstage)
 		self.handstage = handstagenew
 		self.handstage = self.handstage[:49]*3.28084 # Convert m to ft
