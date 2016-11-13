@@ -1,3 +1,9 @@
+# Paul J. Ruess
+# University of Texas at Austin
+# Fall 2016
+# Computational Optimization
+# Homework 5 - Shortest Path with NetworkX and Pyomo
+
 import pandas
 import networkx
 import pyomo
@@ -6,7 +12,7 @@ import geoplotter
 import scipy
 import matplotlib.pyplot as plt
 
-class roadNetwork:
+class shortest_path_network:
 	"""Class for taking input street data (as a .csv) and creating
 	a network structure for the city.
 
@@ -20,6 +26,7 @@ class roadNetwork:
 		"""street_data must be a string representing a .csv file location"""
 
 		# Initialize edge_data
+		print 'Initializing data for analysis...'
 		self.edge_data = pandas.read_csv(street_data,usecols=['ONE_WAY','MILES','kmlgeometry'])
 		
 		# Extract start- and end-nodes from edge pairs, and return as df (expand=True)
@@ -36,6 +43,7 @@ class roadNetwork:
 		self.node_data.columns = ['nodeid'] # label string latlon as nodeid
 		
 		# Latitude
+		print 'Collecting latitudes and longitudes...'
 		self.node_data['lat'] = \
 			self.node_data.nodeid.copy().str.split().str[1] # separate lat
 		self.node_data['lat'] = \
@@ -58,6 +66,7 @@ class roadNetwork:
 		self.edge_data['target'] = end_nodes
 
 		# Create reversed dataset for where ONE_WAY = TF or B
+		print 'Parsing ONE_WAY details...'
 		self.edge_data_reverse = self.edge_data.copy()
 		self.edge_data_reverse.loc[:,['source','target']] = \
 			self.edge_data_reverse.loc[:,['target','source']].values
@@ -79,17 +88,14 @@ class roadNetwork:
 		self.edge_data['edge'] = self.edge_data.source + ',' + \
 			self.edge_data.target
 
-		# Set indices for easy indexing
-		# self.node_data.set_index(['latlon'],inplace=True)
-		# self.edge_data.set_index(['source','target'],inplace=True)
-
 		# Initialize addresses
+		print 'Reading in address points...'
 		self.addresses = pandas.read_csv(address_data)
 		self.addresses['name'] = self.addresses.Address.str.extract(
 			'([a-zA-Z -]+),',expand=True)
-		# self.num_edges = len(self.edge_data)
 
 		# Initialize geoplotter instance
+		print 'Initializing GeoPlotter instance for mapping...'
 		self.map = geoplotter.GeoPlotter()
 
 	def create_graph(self):
@@ -111,16 +117,19 @@ class roadNetwork:
 		return self.node_data.loc[closest_idx,['nodeid']].values[0] # str(latlon)
 
 	def latlon_from_address(self,name):
+		"""Retrieve latlon for given address from provided addresses file"""
 		tempdf = self.addresses.loc[self.addresses.name == name]
 		return (tempdf.Lat.values, tempdf.Lon.values)
 
 	def draw_edges(self,lw=0.3):
+		print 'Drawing network edges...'
 		data = self.edge_data['edge'].str.split(',')
 		edges = [[[float(e) for e in val.split()] \
 			for val in ll] for ll in data] # edges as list of lists
 		self.map.drawLines(lines=edges,color='b',linewidth=lw)
 
 	def draw_nodes(self,currentloc,sz=50):
+		print 'Drawing network nodes...'
 		# Draw current location in green
 		lat,lon = self.latlon_from_address(currentloc)
 		self.map.drawPoints(lat=lat,lon=lon,color='g',s=sz)
@@ -130,18 +139,18 @@ class roadNetwork:
 		self.map.drawPoints(lat=destlat,lon=destlon,color='r',s=sz)
 
 
-	def get_shortestpath_nx(self,start,end):
-		""" Return shortest path in self.graph between 'start' 
-		and 'end' nodes using networkx"""
+	def getSPNetworkx(self,startnode,destnode):
+		""" Return shortest path in self.graph between 'startnode' 
+		and 'destnode' nodes using networkx"""
 		try:
 			self.graph # check for self.graph
 		except AttributeError:
 			self.create_graph() # create self.graph
-		return networkx.shortest_path(self.graph,source=start,target=end,weight='weight')
+		return networkx.shortest_path(self.graph,source=startnode,target=destnode,weight='weight')
 
-	def get_shortestpath_pyomo(self,start,end):
-		""" Return shortest path in self.graph between 'start' 
-		and 'end' nodes using pyomo and gurobi solver"""
+	def getSPLP(self,startnode,destnode,solver='cplex'):
+		""" Return shortest path in self.graph between 'startnode' 
+		and 'destnode' nodes using pyomo and specified solver"""
 		try:
 			self.graph # check for self.graph
 		except AttributeError:
@@ -165,9 +174,9 @@ class roadNetwork:
 		self.m.OBJ = pe.Objective(rule=obj_rule, sense=pe.minimize)
 
 		def flow_bal_rule(m, n):
-			if n == start:
+			if n == startnode:
 				imb = -1 # imbalance
-			elif n == end:
+			elif n == destnode:
 				imb = 1 # imbalance
 			else:
 				imb = 0 # imbalance
@@ -178,19 +187,14 @@ class roadNetwork:
 		self.m.FlowBal = pe.Constraint(self.m.node_set, rule=flow_bal_rule)
 
 		# Solve model
-		solver = pyomo.opt.SolverFactory('cplex') # 'gurobi'
+		solver = pyomo.opt.SolverFactory(solver)
 		results = solver.solve(self.m, tee=True, keepfiles=False, 
 			options_string='mip_tolerances_integrality=1e-9 mip_tolerances_mipgap=0')
 
-		if (results.solver.status != pyomo.opt.SolverStatus.ok):
-			logging.warning('Check solver not ok?')
-		if (results.solver.termination_condition != pyomo.opt.TerminationCondition.optimal):  
-			logging.warning('Check solver optimality?')
-
 		# Collect results for mapping
-		c = start # current node
+		c = startnode # current node
 		path = [c]
-		while c != end: # while current is not the last node
+		while c != destnode: # while current is not the last node
 			succs = self.graph.successors(c)
 			nxt = [s for s in succs if self.m.Y[(c,s)] == 1][0] # get successor
 			c = nxt # c is next node
@@ -199,26 +203,31 @@ class roadNetwork:
 
 		self.edge_data.reset_index() # reset to avoid possible conflicts
 
-	def draw_route(self,route,c='y',lw=5):
+	def draw_route(self,route,c='y',lw=4):
+		print 'Drawing shortest path...'
 		edges = [[[float(e) for e in val.split()] for val in route]] # edges as list of lists
 		self.map.drawLines(lines=edges,color=c,linewidth=lw)
 
 	def draw_shortest_path(self,curloc='Engineering Teaching Center',
-		dest=False,zoom=False,networkx=True,pyomo=True,file=False):
+		dest=False,zoom=False,networkx=True,pyomo=True,pyomosolver='cplex',file=False):
 		
 		# Clear existing maps
 		self.map.clear()
 
-		# Solve model and plot shortest paths
+		# Solve model and draw shortest paths
 		if dest:
 			start = self.get_closest_node(curloc)
 			end = self.get_closest_node(dest)
 			if networkx:
-				nxpath = self.get_shortestpath_nx(start,end) # from networkx
-				self.draw_route(nxpath,c='green',lw=6) # green
+				print 'Solving NetworkX shortest path...'
+				nxpath = self.getSPNetworkx(start,end) # from networkx
+				self.draw_route(nxpath,c='yellow',lw=4) # yellow
 			if pyomo:
-				pyomopath = self.get_shortestpath_pyomo(start,end) # from pyomo
-				self.draw_route(pyomopath,c='orange',lw=3) # orange
+				print 'Solving Pyomo-Cplex shortest path...'
+				pyomopath = self.getSPLP(start,end,pyomosolver) # from pyomo
+				self.draw_route(pyomopath,c='orange',lw=4) # orange
+
+		# Draw network
 		self.draw_edges()
 		self.draw_nodes(currentloc=curloc)
 
@@ -229,7 +238,7 @@ class roadNetwork:
 			a,b,c,d = zoom
 			self.map.setZoom(a,b,c,d)
 
-		# Save to file or plot if file=False
+		# Save to file or draw if file=False
 		if file:
 			plt.savefig(file)
 		else:
@@ -239,25 +248,36 @@ if __name__ == '__main__':
 
 	street_data = 'hw05_files/austin.csv'
 	address_data = 'hw05_files/addresses.csv'
-	nw = roadNetwork(street_data,address_data)
+	nw = shortest_path_network(street_data,address_data)
+	outpath = 'hw5_results/'
 
 	# Draw map
-	nw.draw_shortest_path()
+	nw.draw_shortest_path(
+		file=False)
+		# file=outpath+'network.png')
 
-	# Draw shortest paths to Hula Hut
+	# Draw shortest paths to Hula Hut using NetworkX
 	nw.draw_shortest_path(curloc='Engineering Teaching Center',
 		dest='Hula Hut',
-		zoom=(-97.796, 30.278, -97.725, 30.314))
-		# file='hulahut.png')
+		zoom=(-97.796, 30.278, -97.725, 30.314),
+		networkx=True,pyomo=False, # just networkx path
+		file=False)
+		# file=outpath+'hulahut.png')
 
-	# Get shortest path to Rudys Country Store and Bar-B-Q and show zoomed-in
+	# Get shortest path to Rudys Country Store and Bar-B-Q using Pyomo
 	nw.draw_shortest_path(curloc='Engineering Teaching Center',
 		dest='Rudys Country Store and Bar-B-Q',
-		zoom=(-97.8526, 30.2147, -97.6264, 30.4323))
-		# file='rudys.png')
+		zoom=(-97.8526, 30.2147, -97.6264, 30.4323),
+		networkx=False,pyomo=True,pyomosolver='cplex', # just pyomo path
+		file=False)
+		# file=outpath+'rudys.png')
 
 	# Zoom in to Rudy's U-Turn
+	# I know I don't have to re-solve this, but it was simpler
+	# with the way I've written my program and it works totally fine. 
 	nw.draw_shortest_path(curloc='Engineering Teaching Center',
 		dest='Rudys Country Store and Bar-B-Q',
-		zoom=(-97.7654, 30.375, -97.7241, 30.4225))
-		# file='rusdys_zoom.png')
+		zoom=(-97.7654, 30.375, -97.7241, 30.4225), # different zoomed extent
+		networkx=False,pyomo=True,pyomosolver='cplex', # just pyomo path
+		file=False)
+		# file=outpath+'rudys_zoom.png')
