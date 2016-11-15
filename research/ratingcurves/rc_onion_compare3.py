@@ -66,10 +66,12 @@ class RCData:
 		handstage = self.hand_props.variables['StageHeight'] # h values for Aw and Hr
 		handarea = self.hand_props.variables['WetArea'] # Aw
 		handrad = self.hand_props.variables['HydraulicRadius'] # Hr
+		handlen = self.hand_props.variables['Length'] # Length
 		if handc[self.hand_props_idx] == self.comid:
 			self.handarea = handarea[self.hand_props_idx]*10.7639 # Convert sqm to sqft
 			self.handrad = handrad[self.hand_props_idx]*3.28084 # Convert m to ft
 			self.handslope = handslope[self.hand_props_idx] # unitless
+			self.handlen = handlen[self.hand_props_idx]*3.28084 # Convert m to ft
 		handstage = scipy.array(handstage)*3.28084 # Convert m to ft
 		self.handstage = scipy.rint(handstage) # Round to nearest int
 
@@ -260,12 +262,12 @@ class RCDist(RCData):
 
 		if axis == 'x':
 			interval = self.max_q_query / div
-			ci_qvals = scipy.arange( 0, (self.max_q_query+interval), interval )[1:]
+			ci_qvals = scipy.arange( 0, (self.max_q_query+interval), interval ) # [1:]
 			for q in ci_qvals: 
-				hand_stage = self.get_stage(q)[0] # hand_stage
-				other_stages = self.get_stage(q)[1] # other_stages
-				mean = scipy.average(other_stages)
-				stdev = scipy.std(other_stages)
+				hand_stage = self.get_stage(q)[0] # hand stage
+				other_stages = self.get_stage(q)[1] # xs stages
+				mean = scipy.average(other_stages) # mean of xs stages
+				stdev = scipy.std(other_stages) # stdev of xs stages
 				ub,lb = get_bounds(mean=mean,stdev=stdev,alpha=alpha)
 				ubounds.append(ub)
 				lbounds.append(lb)
@@ -273,12 +275,12 @@ class RCDist(RCData):
 		
 		elif axis == 'y':
 			interval = self.max_h_query / div
-			ci_hvals = scipy.arange( 0, (self.max_h_query+interval), interval )[1:]
+			ci_hvals = scipy.arange( 0, (self.max_h_query+interval), interval ) # [1:]
 			for h in ci_hvals: 
-				hand_disch = self.get_disch(h)[0] # hand_stage
-				other_dischs = self.get_disch(h)[1] # other_stages		
-				mean = scipy.average(other_dischs)
-				stdev = scipy.std(other_dischs)
+				hand_disch = self.get_disch(h)[0] # hand disch
+				other_dischs = self.get_disch(h)[1] # xs dischs		
+				mean = scipy.average(other_dischs) # mean of xs dischs
+				stdev = scipy.std(other_dischs) # stdev of xs dischs
 				ub,lb = get_bounds(mean=mean,stdev=stdev,alpha=alpha)
 				ubounds.append(ub)
 				lbounds.append(lb)
@@ -292,11 +294,11 @@ class RCDist(RCData):
 		'area' - self.handarea (wet area),
 		'hydrad' - self.handrad (hydraulic radius),
 		'slope' - self.handslope (bed slope), and
-		'disch' - any discharge value"""
+		'disch' - any discharge values"""
 		res = 1.49*area*scipy.power(hydrad,(2/3.0))*scipy.sqrt(slope)/disch.T
 		return res.T
 
-	def get_xs_n(self,upto):
+	def get_xs_n(self,upto=40):
 		"""Returns an array containing n-values for each cross-section
 		at each 1ft stage-height interval.
 		'upto' - describes how many stage-heights to iterate through
@@ -310,7 +312,7 @@ class RCDist(RCData):
 		self.xs_nvals = scipy.nan_to_num( xs_nvals )
 		return self.xs_nvals
 
-	def nstats(self,upto=40):
+	def nstats(self,filename=False,upto=40):
 		"""Given an n-values array returns the average and standard deviation
 		of the n-values taken at each stage-height for each cross-section.
 		'nvals' - array of n-values with shape (x,y) with cross-sections
@@ -318,12 +320,38 @@ class RCDist(RCData):
 		self.get_xs_n(upto)
 		means = scipy.mean(self.xs_nvals,axis=1)
 		stdevs = scipy.std(self.xs_nvals,axis=1)
+		# if filename = True: # Write to csv
 		return scipy.column_stack((self.handstage[:upto],means,stdevs))
 
-	def plot_rc(self,filename=False,hand=True,usgs=True,xs=True,ci=True,kind='power',alpha=0.05,div=5):
+	def mannings_q(self,area,hydrad,slope,n):
+		""" Calculates manning's discharge from roughness. 
+		'area' - self.handarea (wet area),
+		'hydrad' - self.handrad (hydraulic radius),
+		'slope' - self.handslope (bed slope), and
+		'n' - any roughness values"""
+		res = 1.49*area*scipy.power(hydrad,(2/3.0))*scipy.sqrt(slope)/n.T
+		return res.T
+
+	def get_xs_q(self,upto=83):
+		"""Returns an array containing q-values for each cross-section
+		at each 1ft stage-height interval, calculated from average n-values.
+		'upto' - describes how many stage-heights to iterate through
+			when collecting n-values for all cross-sections"""
+		disch = []
+		area = self.handarea[:upto]
+		hydrad = self.handrad[:upto]
+		slope = self.handslope
+		n = self.nstats(upto=upto)[:,1] # xs mean n-values
+		xs_qvals = self.mannings_q(area=area,hydrad=hydrad,slope=slope,n=n)
+		self.xs_qvals = scipy.nan_to_num( xs_qvals )
+		return (self.xs_qvals,self.handstage[:upto])
+
+	def plot_rc(self,filename=False,hand=True,usgs=True,xs=True,xsapprox=True,
+		ci=True,kind='power',raw=False,alpha=0.05,div=5):
 		"""Plot HAND and xs rating curves with confidence intervals
 		'hand' - plot hand rating curve [T/F]
 		'xs' - plot xs rating curves [T/F]
+		'xsapprox' - plot xs rating curve approximation from n-value averages [T/F]
 		'ci' - plot confidence intervals [T/F]
 		'alpha' - alpha for confidence intervals [float(0.0,1.0)]
 		'div' - number of intervals for confidence interval [R]"""
@@ -334,17 +362,37 @@ class RCDist(RCData):
 # # # # # TEST PLOT. Should be later removed. # # # # #
 		# [84] returns very high n value (476) for first comid
 		# f = self.interp(x=self.xs_disch[84],y=self.xs_stage[84],kind=kind)
-		# ax.plot(self.xs_disch[84],f(self.xs_disch[84]),c='purple', linewidth=5)
+		# interval = self.xs_disch[84][-1] / div
+		# qvals = scipy.arange( 0, (self.xs_disch[84][-1]+interval), interval ) # [1:]
+		# ax.plot(qvals,f(qvals),c='grey', linewidth=2)
+		# ax.plot(self.xs_disch[84],f(self.xs_disch[84]),
+			# label='Q-inf Example',c='purple', linewidth=6)
 
 		if xs: # Plot all linearly-interpolated XS rating curves
 			for disch,stage in zip(self.xs_disch,self.xs_stage):
-				# interp over discharge
+				# Get interpolation function
 				f = self.interp(x=disch,y=stage,kind=kind)
-				ax.plot(disch,f(disch),c='grey', linewidth=1)
 
-				# interp over stage (switched axes) for testing
-				# f = self.interp(x=stage,y=disch,kind=kind)
-				# ax.plot(f(stage),stage,c='purple',linewidth=1)
+				if raw == True: # Plot raw data (ie. only HEC-RAS points)
+					# interp over discharge
+					ax.plot(disch,f(disch),c='grey', linewidth=2)
+
+					# interp over stage (switched axes) for testing
+					# f = self.interp(x=stage,y=disch,kind=kind)
+					# ax.plot(f(stage),stage,c='purple',linewidth=1)
+
+				if raw == False: # Plot interpolated data (ie. 'div' many interpolated points)
+					interval = disch[-1] / div
+					qvals = scipy.arange( 0, (disch[-1]+interval), interval ) # [1:]
+					ax.plot(qvals,f(qvals),c='grey',linewidth=2)
+			# Add one label for all cross-section curves		
+			ax.plot([],[],label='HEC-RAS',c='grey',linewidth=2)
+
+		if xsapprox:
+			# Add approximate rating curve from average n-values
+			qvals,hvals = self.get_xs_q()
+			f = self.interp(x=qvals,y=hvals,kind=kind)
+			ax.plot(qvals,f(qvals),label='Resistance Function',c='red',linewidth=5)
 
 		if ci: # Plot confidence interval bounds
 			axis = 'x' # manually set to x to avoid problems with y plotting
@@ -402,7 +450,7 @@ class RCDist(RCData):
 		plt.tick_params(axis='both',labelsize=56)
 		plt.grid()
 		if filename:
-			fig.savefig('rc_comid_{0}.png'.format(self.comid))
+			fig.savefig('results/rc_comid_{0}.png'.format(self.comid))
 		else: 
 			# mng = plt.get_current_fig_manager()
 			# mng.resize(*mng.window.maxsize())
@@ -443,11 +491,12 @@ if __name__ == '__main__':
 			continue
 
 		# Retrieve nstats
-		print rcdist.nstats(upto=40)
+		# print rcdist.nstats(filename=False,upto=83)
+		# print rcdist.handlen
 
 		# Plot rating curves from data
-		rcdist.plot_rc(filename=False,hand=True,usgs=True,xs=True,ci=True,
-			kind='power',alpha=0.05,div=5)
+		rcdist.plot_rc(filename=False,hand=False,usgs=False,xs=True,xsapprox=True,
+			ci=False,raw=False,kind='power',alpha=0.05,div=20)
 
 # ************
 # TODO
