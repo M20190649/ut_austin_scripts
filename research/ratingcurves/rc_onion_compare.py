@@ -278,5 +278,5 @@ if __name__ == '__main__':
 			continue
 
 		# Plot rating curves from data
-		rcdist.plot_rc(filename=False,hand=True,usgs=True,xs=True,ci=True,
+		rcdist.plot_rc(filename=False,hand=True,usgs=True,xs=False,ci=True,
 			alpha=0.05,div=5,kind='linear')

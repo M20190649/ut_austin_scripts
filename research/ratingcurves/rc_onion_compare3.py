@@ -495,8 +495,8 @@ if __name__ == '__main__':
 		# print rcdist.handlen
 
 		# Plot rating curves from data
-		rcdist.plot_rc(filename=False,hand=False,usgs=False,xs=True,xsapprox=True,
-			ci=False,raw=False,kind='power',alpha=0.05,div=20)
+		rcdist.plot_rc(filename=False,hand=False,usgs=True,xs=True,xsapprox=False,
+			ci=False,raw=True,kind='linear',alpha=0.05,div=5)
 
 # ************
 # TODO
