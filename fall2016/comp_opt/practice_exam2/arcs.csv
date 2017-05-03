@@ -1,6 +1,0 @@
-startNode,endNode,cost,time,volume
-start,A,-1,1,2
-A,B,-1,1,2
-B,A,-1,1,2
-B,end,-1,1,2
-A,end,-1,1,2
